@@ -47,19 +47,17 @@ module_exit(pipe_exit);
 int pipe_major = 61;     /* Major number */
 /* VARIABLES globales para vigia */
 #define MAX_VIGIA 3
-static char *buffers;
-static int *ins;
-static int *sizes;
+static char *buffers[MAX_VIGIA];
+static int *ins[MAX_VIGIA];
+static int *sizes[MAX_VIGIA];
 static int last_buffer;
+static KContidion *conds[MAX_VIGIA];
 
 
 /* Buffer to store data */
 #define MAX_SIZE 1024
-
 static char *pipe_buffer;
 static int in, out, size;
-
-
 
 /* El mutex y la condicion para pipe */
 static KMutex mutex;
@@ -80,6 +78,16 @@ int pipe_init(void) {
   m_init(&mutex);
   c_init(&cond);
 
+	/* Vigias */
+	printk("<1>Alocando vigias\n");
+	last_buffer = 0;
+	for (int v=0;v<MAX_VIGIA;v++){
+		buffers[v] =	kmalloc(MAX_SIZE, GFP_KERNEL);
+		ins[v] = 0;
+		sizes[v] = 0;
+		c_init(&conds[v]);
+	}
+
   /* Allocating pipe_buffer */
   pipe_buffer = kmalloc(MAX_SIZE, GFP_KERNEL);
   if (pipe_buffer==NULL) {
@@ -95,6 +103,12 @@ int pipe_init(void) {
 void pipe_exit(void) {
   /* Freeing the major number */
   unregister_chrdev(pipe_major, "pipe");
+	
+	/* Liberar vigias */
+	printk("<1>\t liberando vigias\n");
+	for (int v=0;v<MAX_VIGIA;v++){
+		kfree(buffers[v]);
+	}
 
   /* Freeing buffer pipe */
   if (pipe_buffer) {
@@ -164,7 +178,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 
 	printk("<1> \t write %p %ld\n", filp, ucount);
   m_lock(&mutex);
-
+	printk("<1>Leer el buffer\n");
 	ssize_t icount = in_write(filp,buf,ucount,f_pos,actual_buff);
 	if(icount<0){ 
 		goto epiloge;
@@ -185,6 +199,7 @@ donde n_buf es el numero del buffer vigia entrante */
 static ssize_t in_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
 	ssize_t count= ucount;
+	printk("<1>Copiando vigia entrante\n");
   for (int k= 0; k<count; k++) {
     while (size==MAX_SIZE) {
       /* si el buffer esta lleno, el escritor espera */
@@ -194,7 +209,6 @@ static ssize_t in_write( struct file *filp, const char *buf,
         goto epilog;
       }
     }
-
     if (copy_from_user(buffers[n_buf]+ins[n_buf], buf+k, 1)!=0) {
       /* el valor de buf es una direccion invalida */
       count= -EFAULT;
@@ -206,7 +220,10 @@ static ssize_t in_write( struct file *filp, const char *buf,
     ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
 		sizes[n_buff]++;
     size++;
+		c_broadcast(&cond);
   }
+	
+	/* Notificar al buffer la entrada del vigia */
 
 	epilog:
 		return count;
@@ -217,9 +234,8 @@ donde n_buf es el numero del buffer vigia saliente */
 static ssize_t out_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
   ssize_t count= (ssize_t) sizes[n_buff];
-
 	/* sizes[n_buf] es la cantidad que vamos a copiar*/
-
+	printk("<1>Pegando vigia saliente\n");
   for (int k= 0; k<sizes[n_buf]; k++) {
     while (size==MAX_SIZE) {
       /* si el buffer esta lleno, el escritor espera */
