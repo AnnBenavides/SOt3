@@ -173,11 +173,11 @@ epilog:
 static ssize_t pipe_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos) {
 /* write decidirá a que buffer direccionar la entrada y la salida */
- int actual_buff= (last_buff+1)%MAX_VIGIA;
-  int next_buff= (actual_buff+1)%MAX_VIGIA;
+    int actual_buff= (last_buff+1)%MAX_VIGIA;
+    int next_buff= (actual_buff+1)%MAX_VIGIA;
 
 	printk("<1> \t write %p %ld\n", filp, ucount);
-  m_lock(&mutex);
+    m_lock(&mutex);
 	printk("<1>Leer el buffer\n");
 	ssize_t icount = in_write(filp,buf,ucount,f_pos,actual_buff);
 	if(icount<0){ 
@@ -185,7 +185,8 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	}
 	last_buff=actual_buff;
 
-	if(buffers[next_buff]!=NULL){
+	if(buffers[next_buff]!=NULL){ /* TODO revisar si esto verifica el contenido,
+ *                                      quizas sea mejor revizar size y out*/
 		/* si hay algo, entonces debe salir next_buff */
 	}
 	c_broadcast(&cond);
@@ -218,9 +219,9 @@ static ssize_t in_write( struct file *filp, const char *buf,
     printk("<1>\t write byte %c at %d\n",
            buffers[n_buf][ins[n_buf]], in[n_buf]);
     ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
-		sizes[n_buff]++;
-    size++;
-		c_broadcast(&cond);
+    sizes[n_buff]++;
+    size++; /* is this ok? */
+    c_broadcast(&cond);
   }
 	
 	/* Notificar al buffer la entrada del vigia */
@@ -233,25 +234,26 @@ static ssize_t in_write( struct file *filp, const char *buf,
 donde n_buf es el numero del buffer vigia saliente */
 static ssize_t out_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
-  ssize_t count= (ssize_t) sizes[n_buff];
-	/* sizes[n_buf] es la cantidad que vamos a copiar*/
-	printk("<1>Pegando vigia saliente\n");
-  for (int k= 0; k<sizes[n_buf]; k++) {
-    while (size==MAX_SIZE) {
-      /* si el buffer esta lleno, el escritor espera */
-      if (c_wait(&cond, &mutex)) {
-        printk("<1>write interrupted\n");
-        count= -EINTR;
-        goto epilog;
-      }
+    ssize_t count= (ssize_t) sizes[n_buff];
+    /* sizes[n_buf] es la cantidad que vamos a copiar*/
+    printk("<1>Pegando vigia saliente\n");
+
+    for (int k= 0; k<sizes[n_buf]; k++) {
+        while (size==MAX_SIZE) {
+            /* si el buffer esta lleno, el escritor espera */
+            if (c_wait(&cond, &mutex)) {
+                printk("<1>write interrupted\n");
+            count= -EINTR;
+            goto epilog;
+        }
+        }
+        /* copiamos del buffer vigia al buffer global(pipe_buffer) caracter por caracter*/
+        pipe_buff[in]=buffers[n_buf][k];
+
+        printk("<1>write byte %c at %d\n",buffers[n_buf][k], in);
+        in= (in+1)%MAX_SIZE;
+        size++;
     }
-		/* copiamos del buffer vigia al buffer global(pipe_buffer) caracter por caracter*/
-		pipe_buff[in]=buffers[n_buf][k]
-    
-    printk("<1>write byte %c at %d\n",buffers[n_buf][k], in);
-    in= (in+1)%MAX_SIZE;
-    size++;
-  }
 
 	epilog:
 		return count;
