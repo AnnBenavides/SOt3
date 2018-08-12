@@ -45,12 +45,21 @@ module_exit(pipe_exit);
 /* Global variables of the driver */
 
 int pipe_major = 61;     /* Major number */
+/* VARIABLES globales para vigia */
+#define MAX_VIGIA 3
+static char *buffers;
+static int *ins;
+static int *sizes;
+static int last_buffer;
+
 
 /* Buffer to store data */
-#define MAX_SIZE 10
+#define MAX_SIZE 1024
 
 static char *pipe_buffer;
 static int in, out, size;
+
+
 
 /* El mutex y la condicion para pipe */
 static KMutex mutex;
@@ -79,7 +88,7 @@ int pipe_init(void) {
   }
   memset(pipe_buffer, 0, MAX_SIZE);
 
-  printk("<1>Inserting pipe module\n");
+  printk("<1>Insertando modulo Vigia\n");
   return 0;
 }
 
@@ -92,7 +101,7 @@ void pipe_exit(void) {
     kfree(pipe_buffer);
   }
 
-  printk("<1>Removing pipe module\n");
+  printk("<1>Borrando modulo Vigia\n");
 }
 
 static int pipe_open(struct inode *inode, struct file *filp) {
@@ -112,13 +121,13 @@ static ssize_t pipe_read(struct file *filp, char *buf,
                     size_t ucount, loff_t *f_pos) {
   ssize_t count= ucount;
 
-  printk("<1>read %p %ld\n", filp, count);
+  printk("<1>\t read %p %ld\n", filp, count);
   m_lock(&mutex);
 
   while (size==0) {
     /* si no hay nada en el buffer, el lector espera */
     if (c_wait(&cond, &mutex)) {
-      printk("<1>read interrupted\n");
+      printk("<1>\t read interrupted\n");
       count= -EINTR;
       goto epilog;
     }
@@ -135,7 +144,7 @@ static ssize_t pipe_read(struct file *filp, char *buf,
       count= -EFAULT;
       goto epilog;
     }
-    printk("<1>read byte %c (%d) from %d\n",
+    printk("<1>\t read byte %c (%d) from %d\n",
             pipe_buffer[out], pipe_buffer[out], out);
     out= (out+1)%MAX_SIZE;
     size--;
@@ -146,14 +155,36 @@ epilog:
   m_unlock(&mutex);
   return count;
 }
-
+/* Funcion a modificar para modulo vigia */
 static ssize_t pipe_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos) {
-  ssize_t count= ucount;
+/* write decidirá a que buffer direccionar la entrada y la salida */
+ int actual_buff= (last_buff+1)%MAX_VIGIA;
+  int next_buff= (actual_buff+1)%MAX_VIGIA;
 
-  printk("<1>write %p %ld\n", filp, count);
+	printk("<1> \t write %p %ld\n", filp, ucount);
   m_lock(&mutex);
 
+	ssize_t icount = in_write(filp,buf,ucount,f_pos,actual_buff);
+	if(icount<0){ 
+		goto epiloge;
+	}
+	last_buff=actual_buff;
+
+	if(buffers[next_buff]!=NULL){
+		/* si hay algo, entonces debe salir next_buff */
+	}
+	c_broadcast(&cond);
+	epiloge:
+		m_unlock(&mutex);
+		return scount;
+}
+
+/* Proxy entrada: leer el buffer global y guardo en buffer del vigia
+donde n_buf es el numero del buffer vigia entrante */
+static ssize_t in_write( struct file *filp, const char *buf,
+                      size_t ucount, loff_t *f_pos, int n_buf) {
+	ssize_t count= ucount;
   for (int k= 0; k<count; k++) {
     while (size==MAX_SIZE) {
       /* si el buffer esta lleno, el escritor espera */
@@ -164,20 +195,49 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
       }
     }
 
-    if (copy_from_user(pipe_buffer+in, buf+k, 1)!=0) {
+    if (copy_from_user(buffers[n_buf]+ins[n_buf], buf+k, 1)!=0) {
       /* el valor de buf es una direccion invalida */
       count= -EFAULT;
       goto epilog;
     }
-    printk("<1>write byte %c (%d) at %d\n",
-           pipe_buffer[in], pipe_buffer[in], in);
-    in= (in+1)%MAX_SIZE;
+
+    printk("<1>\t write byte %c at %d\n",
+           buffers[n_buf][ins[n_buf]], in[n_buf]);
+    ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
+		sizes[n_buff]++;
     size++;
-    c_broadcast(&cond);
   }
 
-epilog:
-  m_unlock(&mutex);
-  return count;
+	epilog:
+		return count;
+}
+
+/* Proxy salida: escribe el buffer global y desde el buffer del vigia
+donde n_buf es el numero del buffer vigia saliente */
+static ssize_t out_write( struct file *filp, const char *buf,
+                      size_t ucount, loff_t *f_pos, int n_buf) {
+  ssize_t count= (ssize_t) sizes[n_buff];
+
+	/* sizes[n_buf] es la cantidad que vamos a copiar*/
+
+  for (int k= 0; k<sizes[n_buf]; k++) {
+    while (size==MAX_SIZE) {
+      /* si el buffer esta lleno, el escritor espera */
+      if (c_wait(&cond, &mutex)) {
+        printk("<1>write interrupted\n");
+        count= -EINTR;
+        goto epilog;
+      }
+    }
+		/* copiamos del buffer vigia al buffer global(pipe_buffer) caracter por caracter*/
+		pipe_buff[in]=buffers[n_buf][k]
+    
+    printk("<1>write byte %c at %d\n",buffers[n_buf][k], in);
+    in= (in+1)%MAX_SIZE;
+    size++;
+  }
+
+	epilog:
+		return count;
 }
 
