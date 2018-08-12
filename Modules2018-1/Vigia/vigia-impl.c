@@ -189,6 +189,11 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
  *                                      quizas sea mejor revizar size y out*/
 		/* si hay algo, entonces debe salir next_buff */
 	}
+
+    /* Luego de sacar al vigia, me duermo esperando a que me saquen  */
+
+
+    /* Si me despiestan, debo liberar el mutex principal antes de salir */
 	c_broadcast(&cond);
 	epiloge:
 		m_unlock(&mutex);
