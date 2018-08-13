@@ -187,7 +187,10 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 
 	if(buffers[next_buff]!=NULL){ /* TODO revisar si esto verifica el contenido,
  *                                      quizas sea mejor revizar size y out
- *                                      o usar las condiciones del mutex para que el otro ql se eche solo*/
+ *                                      o usar las condiciones del mutex para que el otro ql se eche solo
+ *                                      Y así el dice que el sale
+ *                                      c_broadcast(&conds[nextbuffer]);
+ *                                      c_wait(&conds[actual_buff], &mutex);*/
 		/* si hay algo, entonces debe salir next_buff */
 	}
 
