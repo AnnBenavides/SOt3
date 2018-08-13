@@ -234,7 +234,6 @@ static ssize_t in_write( struct file *filp, const char *buf,
            buffers[n_buf][ins[n_buf]], in[n_buf]);
     ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
     sizes[n_buff]++;
-    size++; /* is this ok? */
     c_broadcast(&cond);
   }
 
