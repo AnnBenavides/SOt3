@@ -201,6 +201,10 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
     /* Luego de sacar al vigia, me duermo esperando a que me saquen  */
     /* Llamar a out write */
 
+    ssize_t ocount = out_write(filp, pipe_buffer, ucount, f_pos, actual_buff); /* revisar */
+    if(ocount < 0){
+        goto epiloge;
+    }
 
     /* Si me despiestan, debo liberar el mutex principal antes de salir */
 	c_broadcast(&cond);
