@@ -185,21 +185,21 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	}
 	last_buff=actual_buff;
 
-	/* Hasta acá debería haber entrado y haberle pasado el mensaje al pipe_buffer
-	 * Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
+	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
+    /* debo pasar la información del actual buffer al pipe_buffer */
+    ssize_t trans_count = trans_write(filp, pipe_buffer, icount, f_pos, actual_buff);
+	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
 
 
-	if(buffers[next_buff]!=NULL){ /* TODO revisar si esto verifica el contenido,
- *                                      quizas sea mejor revizar size y out
- *                                      o usar las condiciones del mutex para que el otro ql se eche solo
- *                                      Y así el dice que el sale
- *                                      c_broadcast(&conds[nextbuffer]);
- *                                      c_wait(&conds[actual_buff], &mutex);*/
+
+    /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
+	c_broadcast(&conds[nextbuffer]);
+	c_wait(&conds[actual_buff], &mutex);
 		/* si hay algo, entonces debe salir next_buff */
-	}
 
     /* Luego de sacar al vigia, me duermo esperando a que me saquen  */
+    /* Llamar a out write */
 
 
     /* Si me despiestan, debo liberar el mutex principal antes de salir */
@@ -237,11 +237,37 @@ static ssize_t in_write( struct file *filp, const char *buf,
     size++; /* is this ok? */
     c_broadcast(&cond);
   }
-	
-	/* Notificar al buffer la entrada del vigia */
+
 
 	epilog:
 		return count;
+}
+
+/* Escribe desde n_buf a buf, escribiendo antes el texto "entra: " */
+static ssize_t trans_write( struct file *filp, const char *buf,
+                         size_t ucount, loff_t *f_pos, int n_buf) {
+    ssize_t count = (ssize_t) ucount; /* No agrego los del string "entra: " */
+    printk("<1> Transfiriendo entrante a buffer principal \n");
+
+    char text_in[] = "entra: ";
+    for (int k=0; k < 7; k++) {
+        while (size==MAX_SIZE) {
+            /* si el buffer esta lleno, el escritor espera */
+            if (c_wait(&cond, &mutex)) {
+                printk("<1>write interrupted\n");
+                count = -EINTR;
+                goto epilog;
+            }
+        }
+        pipe_buffer[in] = text_in[k];
+
+        printk("<1>write byte %c at %d\n",text_in[k], in);
+        in= (in+1)%MAX_SIZE;
+        size++;
+    }
+
+    epilog:
+    return count;
 }
 
 /* Proxy salida: escribe el buffer global y desde el buffer del vigia
@@ -262,7 +288,7 @@ static ssize_t out_write( struct file *filp, const char *buf,
         }
         }
         /* copiamos del buffer vigia al buffer global(pipe_buffer) caracter por caracter*/
-        pipe_buff[in]=buffers[n_buf][k];
+        pipe_buffer[in]=buffers[n_buf][k];
 
         printk("<1>write byte %c at %d\n",buffers[n_buf][k], in);
         in= (in+1)%MAX_SIZE;
