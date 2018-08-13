@@ -185,6 +185,11 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	}
 	last_buff=actual_buff;
 
+	/* Hasta acá debería haber entrado y haberle pasado el mensaje al pipe_buffer
+	 * Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
+	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
+
+
 	if(buffers[next_buff]!=NULL){ /* TODO revisar si esto verifica el contenido,
  *                                      quizas sea mejor revizar size y out
  *                                      o usar las condiciones del mutex para que el otro ql se eche solo
