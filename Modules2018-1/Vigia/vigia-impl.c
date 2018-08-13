@@ -296,6 +296,23 @@ static ssize_t out_write( struct file *filp, const char *buf,
     /* sizes[n_buf] es la cantidad que vamos a copiar*/
     printk("<1>Pegando vigia saliente\n");
 
+    char text_in[] = "sale: ";
+    for (int k=0; k < 6; k++) {
+        while (size==MAX_SIZE) {
+            /* si el buffer esta lleno, el escritor espera */
+            if (c_wait(&cond, &mutex)) {
+                printk("<1>write interrupted\n");
+                count = -EINTR;
+                goto epilog;
+            }
+        }
+        pipe_buffer[in] = text_in[k];
+
+        printk("<1>write byte %c at %d\n",text_in[k], in);
+        in= (in+1)%MAX_SIZE;
+        size++;
+    }
+
     for (int k= 0; k<sizes[n_buf]; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
