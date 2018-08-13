@@ -188,6 +188,9 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
     /* debo pasar la información del actual buffer al pipe_buffer */
     ssize_t trans_count = trans_write(filp, pipe_buffer, icount, f_pos, actual_buff);
+    if(trans_count < 0){
+        goto epiloge;
+    }
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
 
