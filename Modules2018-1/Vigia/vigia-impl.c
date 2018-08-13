@@ -194,7 +194,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
     /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
-	c_broadcast(&conds[nextbuffer]);
+	c_broadcast(&conds[nextbuff]);
 	/* Dormir hasta que deba salir */
 	c_wait(&conds[actual_buff], &mutex);
 
@@ -237,7 +237,7 @@ static ssize_t in_write( struct file *filp, const char *buf,
     printk("<1>\t write byte %c at %d\n",
            buffers[n_buf][ins[n_buf]], in[n_buf]);
     ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
-    sizes[n_buff]++;
+    sizes[n_buf]++;
     c_broadcast(&cond);
   }
 
@@ -283,7 +283,7 @@ static ssize_t trans_write( struct file *filp, const char *buf,
         printk("<1>\t write byte %c at %d\n",
                buffers[n_buf][ins[n_buf]], in[n_buf]);
         ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
-        sizes[n_buff]++;
+        sizes[n_buf]++;
         size++; /* is this ok? */
     }
 
@@ -295,7 +295,7 @@ static ssize_t trans_write( struct file *filp, const char *buf,
 donde n_buf es el numero del buffer vigia saliente */
 static ssize_t out_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
-    ssize_t count= (ssize_t) sizes[n_buff];
+    ssize_t count= (ssize_t) sizes[n_buf];
     /* sizes[n_buf] es la cantidad que vamos a copiar*/
     printk("<1>Pegando vigia saliente\n");
 
