@@ -51,7 +51,7 @@ static char *buffers[MAX_VIGIA];
 static int *ins[MAX_VIGIA];
 static int *sizes[MAX_VIGIA];
 static int last_buffer;
-static KContidion *conds[MAX_VIGIA];
+static KCondition *conds[MAX_VIGIA];
 
 
 /* Buffer to store data */
@@ -173,7 +173,7 @@ epilog:
 static ssize_t pipe_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos) {
 /* write decidirá a que buffer direccionar la entrada y la salida */
-    int actual_buff= (last_buff+1)%MAX_VIGIA;
+    int actual_buff= (last_buffer+1)%MAX_VIGIA;
     int next_buff= (actual_buff+1)%MAX_VIGIA;
 
 	printk("<1> \t write %p %ld\n", filp, ucount);
@@ -183,7 +183,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	if(icount<0){ 
 		goto epiloge;
 	}
-	last_buff=actual_buff;
+	last_buffer=actual_buff;
 
 	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
     /* debo pasar la información del actual buffer al pipe_buffer */
