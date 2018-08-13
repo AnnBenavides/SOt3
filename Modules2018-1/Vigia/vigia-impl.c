@@ -193,13 +193,10 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
     }
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
-
-
-
     /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
 	c_broadcast(&conds[nextbuffer]);
+	/* Dormir hasta que deba salir */
 	c_wait(&conds[actual_buff], &mutex);
-		/* si hay algo, entonces debe salir next_buff */
 
     /* Luego de sacar al vigia, me duermo esperando a que me saquen  */
     /* Llamar a out write */
@@ -267,6 +264,24 @@ static ssize_t trans_write( struct file *filp, const char *buf,
         printk("<1>write byte %c at %d\n",text_in[k], in);
         in= (in+1)%MAX_SIZE;
         size++;
+    }
+
+    for(int k=0; k<count; k++) {
+        while (size==MAX_SIZE) {
+            /* si el buffer esta lleno, el escritor espera */
+            if (c_wait(&cond, &mutex)) {
+                printk("<1>write interrupted\n");
+                count = -EINTR;
+                goto epilog;
+            }
+        }
+        pipe_buffer[in] = buffers[n_buf][ins[n_buf]];
+
+        printk("<1>\t write byte %c at %d\n",
+               buffers[n_buf][ins[n_buf]], in[n_buf]);
+        ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
+        sizes[n_buff]++;
+        size++; /* is this ok? */
     }
 
     epilog:
