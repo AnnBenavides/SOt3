@@ -190,7 +190,6 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	    scount = icount;
 		goto epiloge;
 	}
-	scount = icount;
 	last_buffer=actual_buff;
 
 	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
@@ -201,7 +200,6 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
         scount = trans_count;
         goto epiloge;
     }
-	scount = trans_count;
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
     /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
@@ -217,7 +215,6 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
         scount = ocount;
         goto epiloge;
     }
-	scount = ocount;
 
     /* Si me despiestan, debo liberar el mutex principal antes de salir */
 	// c_broadcast(&cond);
