@@ -20,6 +20,9 @@ static int pipe_open(struct inode *inode, struct file *filp);
 static int pipe_release(struct inode *inode, struct file *filp);
 static ssize_t pipe_read(struct file *filp, char *buf, size_t count, loff_t *f_pos);
 static ssize_t pipe_write(struct file *filp, const char *buf, size_t count, loff_t *f_pos);
+static ssize_t in_write(struct file *filp, const char *buf,size_t ucount, loff_t *f_pos, int n_buf);
+static ssize_t out_write(struct file *filp, const char *buf, size_t ucount, loff_t *f_pos, int n_buf);
+static ssize_t trans_write(struct file *filp, const char *buf, size_t ucount, loff_t *f_pos, int n_buf);
 
 void pipe_exit(void);
 int pipe_init(void);
@@ -175,12 +178,14 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 /* write decidirá a que buffer direccionar la entrada y la salida */
     int actual_buff= (last_buffer+1)%MAX_VIGIA;
     int next_buff= (actual_buff+1)%MAX_VIGIA;
+    int scount = 0;
 
 	printk("<1> \t write %p %ld\n", filp, ucount);
     m_lock(&mutex);
 	printk("<1>Leer el buffer\n");
 	ssize_t icount = in_write(filp,buf,ucount,f_pos,actual_buff);
-	if(icount<0){ 
+	if(icount<0){
+	    scount = icount;
 		goto epiloge;
 	}
 	last_buffer=actual_buff;
@@ -189,6 +194,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
     /* debo pasar la información del actual buffer al pipe_buffer */
     ssize_t trans_count = trans_write(filp, pipe_buffer, icount, f_pos, actual_buff);
     if(trans_count < 0){
+        scount = trans_count;
         goto epiloge;
     }
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
@@ -203,6 +209,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 
     ssize_t ocount = out_write(filp, pipe_buffer, ucount, f_pos, actual_buff); /* revisar */
     if(ocount < 0){
+        scount = ocount;
         goto epiloge;
     }
 
