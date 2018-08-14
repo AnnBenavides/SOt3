@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo `rmmod vigia.ko`
+echo `make`
+echo `mknod /dev/vigia c 61 0`
+echo `chmod a+rw /dev/vigia``
+echo `insmod vigia.ko`
+echo `dmesg | tail`
