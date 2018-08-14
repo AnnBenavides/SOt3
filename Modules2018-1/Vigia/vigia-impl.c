@@ -351,7 +351,7 @@ static ssize_t out_write( struct file *filp, const char *buf,
         size++;
     }
 	sizes[n_buf] = 0;
-	ind[n_buf] = 0;
+	ins[n_buf] = 0;
 
 	epilog:
 		return count;
