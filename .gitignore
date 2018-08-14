@@ -6,3 +6,8 @@ CMake*
 *.ko
 *.o
 *.cmd
+*.mod
+*.mod.c
+*.order
+*.symvers
+/.tmp_versions
