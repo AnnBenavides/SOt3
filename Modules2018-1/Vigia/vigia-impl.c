@@ -200,7 +200,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
     /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
-	c_broadcast(&conds[nextbuff]);
+	c_broadcast(&conds[next_buff]);
 	/* Dormir hasta que deba salir */
 	c_wait(&conds[actual_buff], &mutex);
 
