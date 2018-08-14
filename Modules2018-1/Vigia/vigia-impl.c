@@ -232,6 +232,8 @@ static ssize_t in_write( struct file *filp, const char *buf,
 	ssize_t count;
 	count = ucount;
 	printk("<1>Copiando vigia entrante\n");
+	sizes[n_buf] = 0;
+	ins[n_buf] = 0;
   for (int k= 0; k<count; k++) {
     while (size==MAX_SIZE) {
       /* si el buffer esta lleno, el escritor espera */
@@ -251,7 +253,6 @@ static ssize_t in_write( struct file *filp, const char *buf,
            buffers[n_buf][ins[n_buf]], ins[n_buf]);
     ins[n_buf] = (ins[n_buf]+1)%MAX_SIZE;
     sizes[n_buf]++;
-    //? c_broadcast(&cond);
   }
 	epilog:
 		return count;
@@ -294,14 +295,15 @@ static ssize_t trans_write( struct file *filp, const char *buf,
                 goto epilog;
             }
         }
-        pipe_buffer[in] = buffers[n_buf][ins[n_buf]];
+        pipe_buffer[in] = buffers[n_buf][k];
 
         printk("<1>\t write byte %c at %d\n",
                buffers[n_buf][k], in);
 		in= (in+1)%MAX_SIZE;
-        size++; /* is this ok? */
+        size++;
+		c_broadcast(&cond);
     }
-
+	
     epilog:
     return count;
 }
@@ -349,9 +351,9 @@ static ssize_t out_write( struct file *filp, const char *buf,
         printk("<1>write byte %c at %d\n",buffers[n_buf][k], in);
         in= (in+1)%MAX_SIZE;
         size++;
+		c_broadcast(&cond);
     }
-	sizes[n_buf] = 0;
-	ins[n_buf] = 0;
+	
 
 	epilog:
 		return count;
