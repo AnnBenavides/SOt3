@@ -9,7 +9,7 @@
 #include <linux/types.h> /* size_t */
 #include <linux/proc_fs.h>
 #include <linux/fcntl.h> /* O_ACCMODE */
-#include <asm/uaccess.h> /* copy_from/to_user */
+#include <linux/uaccess.h> /* copy_from/to_user */
 
 #include "kmutex.h"
 
