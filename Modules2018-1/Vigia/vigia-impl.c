@@ -176,6 +176,9 @@ epilog:
 static ssize_t pipe_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos) {
 /* write decidirá a que buffer direccionar la entrada y la salida */
+	ssize_t icount;
+	ssize_t trans_count;
+	ssize_t ocount;
     int actual_buff= (last_buffer+1)%MAX_VIGIA;
     int next_buff= (actual_buff+1)%MAX_VIGIA;
     int scount = 0;
@@ -183,7 +186,8 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	printk("<1> \t write %p %ld\n", filp, ucount);
     m_lock(&mutex);
 	printk("<1>Leer el buffer\n");
-	ssize_t icount = in_write(filp,buf,ucount,f_pos,actual_buff);
+	
+	icount = in_write(filp,buf,ucount,f_pos,actual_buff);
 	if(icount<0){
 	    scount = icount;
 		goto epiloge;
@@ -192,7 +196,8 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 
 	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
     /* debo pasar la información del actual buffer al pipe_buffer */
-    ssize_t trans_count = trans_write(filp, pipe_buffer, icount, f_pos, actual_buff);
+    
+	trans_count = trans_write(filp, pipe_buffer, icount, f_pos, actual_buff);
     if(trans_count < 0){
         scount = trans_count;
         goto epiloge;
@@ -207,7 +212,8 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
     /* Luego de sacar al vigia, me duermo esperando a que me saquen  */
     /* Llamar a out write */
 
-    ssize_t ocount = out_write(filp, pipe_buffer, ucount, f_pos, actual_buff); /* revisar */
+    
+	ocount = out_write(filp, pipe_buffer, ucount, f_pos, actual_buff); /* revisar */
     if(ocount < 0){
         scount = ocount;
         goto epiloge;
@@ -224,7 +230,8 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 donde n_buf es el numero del buffer vigia entrante */
 static ssize_t in_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
-	ssize_t count= ucount;
+	ssize_t count;
+	count = ucount;
 	printk("<1>Copiando vigia entrante\n");
   for (int k= 0; k<count; k++) {
     while (size==MAX_SIZE) {
@@ -256,10 +263,13 @@ static ssize_t in_write( struct file *filp, const char *buf,
 /* Escribe desde n_buf a buf, escribiendo antes el texto "entra: " */
 static ssize_t trans_write( struct file *filp, const char *buf,
                          size_t ucount, loff_t *f_pos, int n_buf) {
-    ssize_t count = (ssize_t) ucount; /* No agrego los del string "entra: " */
+    	ssize_t count;
+	char text_in[]= "entra: ";
+
+	count = (ssize_t) ucount; /* No agrego los del string "entra: " */
     printk("<1> Transfiriendo entrante a buffer principal \n");
 
-    char text_in[] = "entra: ";
+    
     for (int k=0; k < 7; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
@@ -302,11 +312,14 @@ static ssize_t trans_write( struct file *filp, const char *buf,
 donde n_buf es el numero del buffer vigia saliente */
 static ssize_t out_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
-    ssize_t count= (ssize_t) sizes[n_buf];
+    ssize_t count;
+	char text_in[] = "sale: ";
+
+	count = (ssize_t) sizes[n_buf];
     /* sizes[n_buf] es la cantidad que vamos a copiar*/
     printk("<1>Pegando vigia saliente\n");
 
-    char text_in[] = "sale: ";
+    
     for (int k=0; k < 6; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
