@@ -58,7 +58,7 @@ static KCondition conds[MAX_VIGIA];
 
 
 /* Buffer to store data */
-#define MAX_SIZE 1024
+#define MAX_SIZE 100
 static char *pipe_buffer;
 static int in, out, size;
 
@@ -176,12 +176,10 @@ epilog:
 static ssize_t pipe_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos) {
 /* write decidirá a que buffer direccionar la entrada y la salida */
-	ssize_t icount;
-	ssize_t trans_count;
-	ssize_t ocount;
+	ssize_t icount, trans_count, ocount, scount;
     int actual_buff= (last_buffer+1)%MAX_VIGIA;
     int next_buff= (actual_buff+1)%MAX_VIGIA;
-    int scount = 0;
+    scount = ucount;
 
 	printk("<1> \t write %p %ld\n", filp, ucount);
     	m_lock(&mutex);
@@ -192,16 +190,18 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	    scount = icount;
 		goto epiloge;
 	}
+	scount = icount;
 	last_buffer=actual_buff;
 
 	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
     /* debo pasar la información del actual buffer al pipe_buffer */
     
-	trans_count = trans_write(filp, pipe_buffer, ucount, f_pos, actual_buff);//fix ucount-icount
+	trans_count = trans_write(filp, pipe_buffer, ucount, f_pos, actual_buff);
     if(trans_count < 0){
         scount = trans_count;
         goto epiloge;
     }
+	scount = trans_count;
 	 /* Entonces acá debo chequear si hay que despertar a alguien antes de dormirme
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
     /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
@@ -217,6 +217,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
         scount = ocount;
         goto epiloge;
     }
+	scount = ocount;
 
     /* Si me despiestan, debo liberar el mutex principal antes de salir */
 	// c_broadcast(&cond);
@@ -261,11 +262,9 @@ static ssize_t in_write( struct file *filp, const char *buf,
 /* Escribe desde n_buf a buf, escribiendo antes el texto "entra: " */
 static ssize_t trans_write( struct file *filp, const char *buf,
                          size_t ucount, loff_t *f_pos, int n_buf) {
-    	ssize_t count;
-	ssize_t in_len;
+    ssize_t count, in_len;
 	char text_in[]= "entra: ";
 	in_len= (ssize_t)strlen(text_in);
-
 	count = (ssize_t) sizes[n_buf]; /* size string del buffer de vigia sizes[n_buf] */
     printk("<1> Transfiriendo entrante a buffer principal \n");
 
@@ -314,8 +313,7 @@ static ssize_t out_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
     ssize_t count, out_size;
 	char text_in[] = "sale: ";
-	out_size = (ssize_t) len(text_in);
-
+	out_size = (ssize_t) strlen(text_in);
 	count = (ssize_t) sizes[n_buf];
     /* sizes[n_buf] es la cantidad que vamos a copiar*/
     printk("<1>Pegando vigia saliente\n");
