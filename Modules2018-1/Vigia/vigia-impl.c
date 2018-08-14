@@ -194,7 +194,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	last_buffer=actual_buff; //actualizamos el ultimo vigia   
 	/* Avisamos al pipe que entro un vigia */
 	m_count = middle_proxy(filp, pipe_buffer, ucount, f_pos, actual_buff);
-    if(trans_count < 0){
+    if(m_count < 0){
         count = m_count;
         goto epiloge;
     }
@@ -206,7 +206,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 
 	/* Avisamos al pipe que un vigia sale */
 	out_count = out_proxy(filp, pipe_buffer, ucount, f_pos, actual_buff); 
-    if(ocount < 0){
+    if(out_count < 0){
         count = out_count;
         goto epiloge;
     }
