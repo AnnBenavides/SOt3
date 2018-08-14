@@ -4,3 +4,5 @@ cmake*
 CMake*
 *.io
 *.ko
+*.o
+*.cmd
