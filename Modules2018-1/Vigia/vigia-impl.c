@@ -242,7 +242,7 @@ static ssize_t in_write( struct file *filp, const char *buf,
     }
 
     printk("<1>\t write byte %c at %d\n",
-           buffers[n_buf][ins[n_buf]], in[n_buf]);
+           buffers[n_buf][ins[n_buf]], ins[n_buf]);
     ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
     sizes[n_buf]++;
     c_broadcast(&cond);
@@ -288,7 +288,7 @@ static ssize_t trans_write( struct file *filp, const char *buf,
         pipe_buffer[in] = buffers[n_buf][ins[n_buf]];
 
         printk("<1>\t write byte %c at %d\n",
-               buffers[n_buf][ins[n_buf]], in[n_buf]);
+               buffers[n_buf][ins[n_buf]], ins[n_buf]);
         ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
         sizes[n_buf]++;
         size++; /* is this ok? */
