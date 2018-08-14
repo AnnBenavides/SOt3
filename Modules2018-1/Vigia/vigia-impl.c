@@ -51,10 +51,10 @@ int pipe_major = 61;     /* Major number */
 /* VARIABLES globales para vigia */
 #define MAX_VIGIA 3
 static char *buffers[MAX_VIGIA];
-static int *ins[MAX_VIGIA];
-static int *sizes[MAX_VIGIA];
+static int ins[MAX_VIGIA];
+static int sizes[MAX_VIGIA];
 static int last_buffer;
-static KCondition *conds[MAX_VIGIA];
+static KCondition conds[MAX_VIGIA];
 
 
 /* Buffer to store data */
