@@ -219,7 +219,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
     }
 
     /* Si me despiestan, debo liberar el mutex principal antes de salir */
-	c_broadcast(&cond);
+	// c_broadcast(&cond);
 	epiloge:
 		m_unlock(&mutex);
 		return scount;
@@ -312,15 +312,16 @@ static ssize_t trans_write( struct file *filp, const char *buf,
 donde n_buf es el numero del buffer vigia saliente */
 static ssize_t out_write( struct file *filp, const char *buf,
                       size_t ucount, loff_t *f_pos, int n_buf) {
-    ssize_t count;
+    ssize_t count, out_size;
 	char text_in[] = "sale: ";
+	out_size = (ssize_t) len(text_in);
 
 	count = (ssize_t) sizes[n_buf];
     /* sizes[n_buf] es la cantidad que vamos a copiar*/
     printk("<1>Pegando vigia saliente\n");
 
     
-    for (int k=0; k < 6; k++) {
+    for (int k=0; k < out_size; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
             if (c_wait(&cond, &mutex)) {
@@ -336,7 +337,7 @@ static ssize_t out_write( struct file *filp, const char *buf,
         size++;
     }
 
-    for (int k= 0; k<sizes[n_buf]; k++) {
+    for (int k= 0; k<count; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
             if (c_wait(&cond, &mutex)) {
