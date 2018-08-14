@@ -184,7 +184,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
     int scount = 0;
 
 	printk("<1> \t write %p %ld\n", filp, ucount);
-    m_lock(&mutex);
+    	m_lock(&mutex);
 	printk("<1>Leer el buffer\n");
 	
 	icount = in_write(filp,buf,ucount,f_pos,actual_buff);
@@ -197,7 +197,7 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	/* Hasta acá debería haber entrado y haberle pasado el mensaje al actual_buffer*/
     /* debo pasar la información del actual buffer al pipe_buffer */
     
-	trans_count = trans_write(filp, pipe_buffer, icount, f_pos, actual_buff);
+	trans_count = trans_write(filp, pipe_buffer, ucount, f_pos, actual_buff);//fix ucount-icount
     if(trans_count < 0){
         scount = trans_count;
         goto epiloge;
@@ -206,13 +206,12 @@ static ssize_t pipe_write( struct file *filp, const char *buf,
 	 *  (hacer broadcast de la siguiente condición debería ser suficiente creo) */
     /* usar las condiciones del mutex para que el otro ql se eche solo Y así el dice que el sale */
 	c_broadcast(&conds[next_buff]);
+
 	/* Dormir hasta que deba salir */
 	c_wait(&conds[actual_buff], &mutex);
 
     /* Luego de sacar al vigia, me duermo esperando a que me saquen  */
     /* Llamar a out write */
-
-    
 	ocount = out_write(filp, pipe_buffer, ucount, f_pos, actual_buff); /* revisar */
     if(ocount < 0){
         scount = ocount;
@@ -250,12 +249,10 @@ static ssize_t in_write( struct file *filp, const char *buf,
 
     printk("<1>\t write byte %c at %d\n",
            buffers[n_buf][ins[n_buf]], ins[n_buf]);
-    ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
+    ins[n_buf] = (ins[n_buf]+1)%MAX_SIZE;
     sizes[n_buf]++;
-    c_broadcast(&cond);
+    //? c_broadcast(&cond);
   }
-
-
 	epilog:
 		return count;
 }
@@ -264,13 +261,15 @@ static ssize_t in_write( struct file *filp, const char *buf,
 static ssize_t trans_write( struct file *filp, const char *buf,
                          size_t ucount, loff_t *f_pos, int n_buf) {
     	ssize_t count;
+	ssize_t in_len;
 	char text_in[]= "entra: ";
+	in_len= (ssize_t)strlen(text_in);
 
-	count = (ssize_t) ucount; /* No agrego los del string "entra: " */
+	count = (ssize_t) sizes[n_buf]; /* size string del buffer de vigia sizes[n_buf] */
     printk("<1> Transfiriendo entrante a buffer principal \n");
 
     
-    for (int k=0; k < 7; k++) {
+    for (int k=0; k < in_len; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
             if (c_wait(&cond, &mutex)) {
@@ -285,7 +284,7 @@ static ssize_t trans_write( struct file *filp, const char *buf,
         in= (in+1)%MAX_SIZE;
         size++;
     }
-
+	/* Copiar buffer vigia al buffer del pipe */
     for(int k=0; k<count; k++) {
         while (size==MAX_SIZE) {
             /* si el buffer esta lleno, el escritor espera */
@@ -298,9 +297,8 @@ static ssize_t trans_write( struct file *filp, const char *buf,
         pipe_buffer[in] = buffers[n_buf][ins[n_buf]];
 
         printk("<1>\t write byte %c at %d\n",
-               buffers[n_buf][ins[n_buf]], ins[n_buf]);
-        ins[n_buf]= (ins[n_buf]+1)%MAX_SIZE;
-        sizes[n_buf]++;
+               buffers[n_buf][k], in);
+		in= (in+1)%MAX_SIZE;
         size++; /* is this ok? */
     }
 
@@ -352,6 +350,8 @@ static ssize_t out_write( struct file *filp, const char *buf,
         in= (in+1)%MAX_SIZE;
         size++;
     }
+	sizes[n_buf] = 0;
+	ind[n_buf] = 0;
 
 	epilog:
 		return count;
